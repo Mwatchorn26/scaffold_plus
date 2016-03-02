@@ -1,0 +1,28 @@
+{% print "Running Model Template" %}
+{% for model in models %}
+        {% model|pprint %}
+
+        {% if model.HasSequence %}
+
+                {# {% extends "model_view.xml" %} #}
+                {% set Name   = model.SequenceName|title %}
+                {% set code   = model.SequenceName|lower|snake|replace("_",".") %}
+                {% set prefix = model.SequencePrefix %}
+                {# {% set suffix = ....... %} #}
+
+                {%block sequence %}
+                        <record forcecreate=”1″ id=”seq_type_id” model=”ir.sequence.type”>
+                                <field name=”name”>{{ Name }}</field>
+                                <field name=”code”>{{ code }}</field>
+                        </record>
+
+                        <record forcecreate=”1″ id=”seq_id” model=”ir.sequence”>
+                                <field name=”name”>{{ Name }}</field>
+                                <field name=”code”>{{ code }}</field>
+                                <field name=”padding” eval=”padding”/>
+                                <field name=”prefix”>{{ prefix }}</field>
+                                <field name=”suffix”></field>
+                        </record>
+                {% endblock %}
+        {% endif %}
+{% endfor %}
