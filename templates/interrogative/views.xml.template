@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<openerp>
+        <data>
+                <!-- For each model in models -->
+            {% for model in models %}
+                <!--  ************************************  -->
+                <!--  {{ model.ModelName|upper }} FORM VIEW     -->
+                <!--  ************************************  -->
+                <record model="ir.ui.view" id="{{ model.ModelName|snake }}_form_view">
+                <field name="name">{{ model.ModelName|pascal|lower }}.form</field>
+                <field name="model">{{ ModuleName|snake }}.{{ model.ModelName|snake }}{% if model.IsWizard %}.wizard{% endif %}</field>
+                <field name="arch" type="xml">
+                        <form string="{{ model.ModelName }} Form">
+                                {%- if model.HasStates %}
+                                <header>
+                                {% for state in model.states -%}
+                                        <button string="{{ state }}" name="button_{{ state|pascal|lower }}" states="{{ state|pascal|lower }}" type="object" groups="base.group_user"/>
+                                {% endfor -%}
+                        <field name="state" widget="statusbar" statusbar_visible="
+                        {%- for state in model.states -%}
+                        {{ state|lower }},
+                        {%- endfor -%} 
+                        "/>
+                                        </header>
+                                {% endif -%}
+                                        {% if model.IsWizard == False %}
+                                <sheet>
+                                        <group>
+                                        {%- for field in model.fields -%}
+                                        {%- if field.FieldInNotebook == False %}
+                                                        <field name="{{ field.FieldName }}"/>
+                                                        {%- endif -%}
+                                                {%- endfor %} <!-- end fields -->
+                                                </group>
+                                                {%- if model.NotebookPages|length > 0 %}
+                                                <notebook>
+                                                        {%- for page in model.NotebookPages %}
+                                                        <page string="{{ page }}">
+                                                                {%- for field in model.fields -%}
+                                                                loop through field: {{ field.FieldName }}
+                                                                {%- if field.FieldInNotebook %}
+                                                                {{ field.FieldName }} Field In Notebook....
+                                                                <!-- if Field In Notebook -->
+                                                                {%- if field.FieldNotebookPage == page %}
+                                                                <!-- if Field on current page -->
+                                                                <field name="{{ field.FieldName }}"/>
+                                                <!-- end if field on current page -->
+                                                {%- endif %}
+                                                <!-- end if field in Notebook -->
+                                                {%- endif %}
+                                                <!-- end for each field in model -->
+                                                {%- endfor %}
+                                                        </page>
+                                                        <!-- end of {{ page }} page -->
+                                        {%- endfor %}
+                                                </notebook>
+                                                <!-- end if notebook requried -->
+                                                {%- endif %}
+                                        </sheet>
+                                        {%- elif model.IsWizard %}
+                                        {%- for field in model.fields -%}
+                                        {{ field.FieldName }}
+                                        {%- endfor %}
+                                        <footer>
+                                                {% for button in model.buttons -%}
+                                                <button name="{{ button.ButtonFunction|lower }}" type="object"
+                                                                string="{{ button.ButtonName|title }}" class="oe_highlight"/>
+                                                {% endfor -%}
+                                                or
+                                                <button string="Cancel" special="cancel"  class="oe_link"/>
+                                        </footer>
+                                        {% endif %}
+                                </form>
+                        </field>
+                </record>
+            {% if model.IsWizard == False %} {#First half of XML: Not a Wizard! #}
+            <!--  *************************************  -->
+                <!--  {{ model.ModelName|upper }} TREE VIEW      -->
+                <!--  *************************************  -->
+                <record model="ir.ui.view" id="{{ model.ModelName|snake }}_form_view">
+                <field name="name">{{ model.ModelName|snake }}.form</field>
+                <field name="model">{{ ModuleName|snake }}.{{ model.ModelName|snake }}</field>
+                <field name="arch" type="xml">
+                        <form string="{{ model.modelName }} Form">
+                                <tree string="{{ model.modelName }}">
+                                        {%- for field in model.fields -%}
+                                    {%- if field.FieldInTree == True %}
+                                        <field name="{{ field.FieldName }}" 
+                                                {%- if field.FieldTreeVisible==False %}invisible="1"{% endif %}/>
+                                        {%- endif -%} {# end if FieldInTree #}
+                                        {%- endfor %} {# end for fields #}
+                                </tree>
+                    </form>
+                </field>
+            </record>
+                {%- if model.HasSequence==True %}
+            <!--  ************************************  -->
+                <!--  {{ model.ModelName|upper }} SEQUENCE      -->
+                <!--  ************************************  -->
+                <record forcecreate="1" id="seq_type_id" model="ir.sequence.type">
+                  <field name="name">{{ model.SequenceName }}</field>
+                        <field name="code">{{ model.SequenceName|snake }}</field>
+                </record>
+                <record forcecreate="1" id="seq_id" model="ir.sequence">
+                        <field name="name">{{ model.SequenceName }}</field>
+                        <field name="code">{{ model.SequenceName|snake|replace('_','.') }}</field>
+                        <field name="padding" eval="padding"/>
+                        <field name="prefix">{{ model.SequencePrefix }}</field>
+                        <field name="suffix"></field>
+                </record>
+                <!-- end if model Has Sequence -->
+                {%- endif %}
+                {%- if model.HasMenu==True %}
+                <!--  ********************************  -->
+                <!--  {{ model.ModelName|title }} MENU  -->
+                <!--  ********************************  -->
+        <menuitem name="My New Addon" id="menu_my_new_addon_root" sequence="110"/>
+
+        <menuitem name="General" id="menu_{{ ModuleName }}" parent="menu_my_new_addon_root"/>
+
+        <record model="ir.actions.act_window" id="action_{{ model.ModelName }}">
+            <field name="name">{{ model.ModelName }}</field>
+            <field name="res_model">{{ ModuleName }}.{{ model.ModelName }}</field>
+            <field name="view_mode">tree,form</field>
+        </record>
+
+        <menuitem name="{{ model.ModelName|capitalize }}" id="menu_{{ model.ModelName }}" parent="menu_{{ ModuleName }}"
+            sequence="1" action="action_{{ model.ModelName }}"/>
+                <!-- end if model Has Menu -->
+                {%- endif %}
+
+                {% if model.HasStates==True -%}
+                <!--  ************************************  -->
+                <!--  {{ model.ModelName|upper }} WORKFLOW      -->
+                <!--  ************************************  -->
+                <record id="{{ model.ModelName|pascal|lower }}_workflow" model="workflow">
+                    <field name="name">{{ model.ModelName|snake|replace(",",".") }}.workflow</field>
+                    <field name="osv">{{ model.ModelName|snake|replace(",",".") }}.workflow.model</field>
+                    <field name="on_create">True</field>
+                </record>
+
+                {%- for state in model.states %}
+                <record id="activity_{{ state|pascal|lower }}" model="workflow.activity">
+                    <field name="wkf_id" ref="{{ model.ModelName|pascal|lower }}_workflow"/>
+                    {% if state=='Draft' -%}
+                    <field name="flow_start">True</field>
+                    {% endif -%}
+                    {%- if state=='Cancel' -%}
+                    <field name="flow_stop">True</field>
+                    {% endif -%}
+                    <field name="name">{{ state|lower }}</field>
+                    {% if state=='Cancel' -%}
+                    <field name="kind">stopall</field>  <!-- options are: function, dummy, subflow, stopall -->
+                    {% else -%}
+                    <field name="kind">function</field> <!-- options are: function, dummy, subflow, stopall -->
+                        {% endif -%}
+                    <field name="action">{{ model.ModelName }}_wfk_func()</field> <!-- placeholder function -->
+                </record>
+                {%- endfor %}
+
+                <!-- for each transition -->
+                {% for state in model.states -%}
+                <record id="trans_{{ state|pascal|lower }}_{{ state|nextItem(model.states) }}" model="workflow.transition">
+                    <field name="act_from" ref="activity_{{ state|pascal|lower }}"/>
+                    <field name="act_to" ref="activity_{{ state|nextItem(model.states)|pascal|lower }}"/>
+                </record>
+                {% endfor -%}<!-- end for each transition -->
+                <!-- end if model Has States -->
+                {%- endif %}
+                {% elif model.IsWizard -%} {# Second half of XML: model is a Wizard #}
+                <act_window id="launch_{{ model.ModelName|snake }}_wizard"
+                                        name="{{ model.ModelName|title }} Wizard"
+                                        {#- src_model="{{ ModuleName|snake }}.{{ model.WizardSrcModel|snake }}" #}
+                                        res_model="{{ ModuleName|snake }}.{{ model.ModelName|snake }}.wizard"
+                                        view_mode="form"
+                                        target="new"
+                                        key2="client_action_multi"/> <!-- option: key2:"client_print_multi" -->
+                <!-- end if Wizard -->
+                {%- endif %}
+
+                <!-- end models -->
+                {%- endfor %}
+
+        </data>
+</openerp>
