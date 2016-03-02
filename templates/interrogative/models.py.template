@@ -1,0 +1,127 @@
+# -*- coding: utf-8 -*-##############################################################################
+#
+#    Odoo - {{ ModuleName }}
+#    Copyright (C) {{ year }} CONTRIBUTING COMPANY OR USER
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU Affero General Public License as
+#    published by the Free Software Foundation, either version 3 of the
+#    License, or (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU Affero General Public License for more details.
+#
+#    You should have received a copy of the GNU Affero General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+##############################################################################
+
+from openerp import models, fields, api
+{% for model in models %}
+{% if model.IsWizard %}
+class cleanup_wizard(models.TransientModel):
+    '''
+    {{ model.ModelDescription }}
+    '''
+    _name = '{{ ModuleName|snake }}.{{ model.ModelName|snake }}.wizard'
+{% else %}
+class {{ model.ModelName|snake }}(models.Model):
+    '''
+    {{ model.ModelDescription }}
+    '''
+    {% if model.ModelInherits -%}
+    _inherit = '{{ model.InheritFromModel }}'
+    {% else -%}
+    _name ='{{ ModuleName|snake }}.{{ model.ModelName|snake }}'
+    {% endif -%}
+{% endif -%}
+    {%if model.HasStates -%}
+    state = fields.Selection([
+        {%- for state in model.states %}
+        ('{{ state|lower }}','{{ state|title }}'),
+        {%- endfor %}
+        ], string='Status', default='draft', readonly=True, required=True, copy=False,
+        help="The various states (or stages) that the model can pass through.")
+    {% endif -%}
+
+    {%- if model.HasSequence -%}
+    sequence = fields.Integer(string='{{ model.SequenceName|title }}', default=1,
+    help="Keeps track of each instance of {{ model.ModelName }} using a counter."
+    {%- endif -%}
+    {% for field in model.fields %}
+    {%- if field.FieldType == "Char" %}
+    {{ field.FieldName|snake }} = fields.Char(string='{{ field.FieldName|title }}',
+                    {%- if field.FieldName|lower =="name" %} required=True,{%- endif %}
+                    {%- if model.HasStates %} readonly=True, states={'draft':[('readonly', False)]}, {%- endif %}
+                    help=" {{ field.FieldHelp }} ")
+    {%- elif field.FieldType == "Boolean" %}
+    {{ field.FieldName|snake }} = fields.Boolean(string='{{ field.FieldName|title }}',
+                    {%- if model.HasStates %} readonly=True, states={'draft':[('readonly', False)]}, {%- endif %}
+                    help=" {{ field.FieldHelp }} ")
+    {% elif field.FieldType == "Integer" %}
+    {{ field.FieldName|snake }} = fields.Integer(string='{{ field.FieldName|title }}',
+                    {%- if model.HasStates -%} readonly=True, states={'draft':[('readonly', False)]}, {%- endif %}
+                    help=" {{ field.FieldHelp }} ")
+    {% elif field.FieldType == "Float" %}
+    {{ field.FieldName|snake }} = fields.Float(string='{{ field.FieldName|title }}',
+                    {%- if model.HasStates %} readonly=True, states={'draft':[('readonly', False)]}, {%- endif %}
+                    help=" {{ field.FieldHelp }} ")
+    {% elif field.FieldType == "Date" %}
+    {{ field.FieldName|snake }} = fields.Date(string='{{ field.FieldName|title }}',
+                    {%- if model.HasStates %} readonly=True, states={'draft':[('readonly', False)]}, {%- endif %}
+                    help=" {{ field.FieldHelp }} ")
+    {% elif field.FieldType == "Text" %}
+    {{ field.FieldName|snake }} = fields.Text(string='{{ field.FieldName|title }}',
+                    {%- if model.HasStates %} readonly=True, states={'draft':[('readonly', False)]}, {%- endif %}
+                    help=" {{ field.FieldHelp }} ")
+    {% elif field.FieldType == "Many2many" %}
+    {{ field.FieldName|snake }} = fields.Many2many(string='{{ field.FieldName|title }}',
+                    {%- if model.HasStates %} readonly=True, states={'draft':[('readonly', False)]}, {%- endif %}
+                    help=" {{ field.FieldHelp }} ")
+    {% elif field.FieldType == "Many2one" %}
+    {{ field.FieldName|snake }} = fields.Many2one(string='{{ field.FieldName|title }}',
+                    {%- if model.HasStates %} readonly=True, states={'draft':[('readonly', False)]}, {%- endif %}
+                    help=" {{ field.FieldHelp }} ")
+    {% elif field.FieldType == "One2many" %}
+    {{ field.FieldName|snake }} = fields.One2many(string='{{ field.FieldName|title }}',
+                    {%- if model.HasStates %} readonly=True, states={'draft':[('readonly', False)]}, {%- endif %}
+                    help=" {{ field.FieldHelp }} ")
+    {% elif field.FieldType == "Selection" %}
+    {{ field.FieldName|snake }} = fields.Selection([
+                    {% for selection in field.selections %}
+                    ('{{ selection|snake }}','{{ selection|title }}'),
+                    {% endfor %}
+                    ],
+                    string='{{ field.FieldName|title }}',
+                    {%- if model.HasStates %} readonly=True, states={'draft':[('readonly', False)]}, {%- endif %}
+                    help=" {{ field.FieldHelp }} ")
+    {% endif %}
+    {% endfor -%}#end of fields
+    {%if model.HasStates -%}
+    def {{ model.ModelName|snake|lower }}_wkf_func(self):
+        '''
+        This is an example placeholder function called by a workflow state.
+        '''
+        pass
+    {% endif -%}
+
+    #Decorator                    #When Used:
+    #-------------------------------------------
+    @api.multi                     #if operating on a single id
+    #@api.one                    #if operating on a group of ids.
+    #@depends('model.field')    #if the function should run when one of the fields (arguments to the @depends) is changed in the view. Used for computed fields. 
+    #@constrains('field')        #if the function is a constraint checker against the specified field
+    #@onchange('model.field')    #if the function must run when a user modifies one of the fields named as arguments to the decorator.
+    #@api.returns('ir.ui.view')    #defines the type of model being returned. The output is overridden with V7 id or ids if the calling function is using v7.
+    #@api.model                    #if your function operates on the model information, but not a specific instance (no id or ids are involved) 
+    #@api.v8                    #if your function is specific to version 8
+    #@api.v7                    #if your function is specific to version 7
+    def ExampleFunction(self):
+        '''
+        This is an example function
+        '''
+        pass
+
+{% endfor %} #end of models
